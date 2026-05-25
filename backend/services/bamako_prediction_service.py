@@ -17,6 +17,10 @@ import joblib
 import numpy as np
 
 from models.lstm_model_bamako import LSTMPredictorBamako
+from services.bamako_live_sequence_builder import (
+    build_model_sequence,
+    fetch_merged_daily_meteo,
+)
 from utils.bamako_communes import BAMAKO_COMMUNES
 from utils.bamako_features import get_risk_factors, get_static_features
 from utils.bamako_neighborhoods import (
@@ -139,7 +143,106 @@ class BamakoPredictionService:
     # ------------------------------------------------------------------ #
     # API publique
     # ------------------------------------------------------------------ #
+    def _model_n_features(self) -> Optional[int]:
+        model = self.lstm_predictor.model
+        if model is not None and getattr(model, "input_shape", None):
+            shape = model.input_shape
+            if shape and len(shape) >= 3 and shape[-1]:
+                return int(shape[-1])
+        return None
+
     def predict(
+        self,
+        commune: Optional[str] = None,
+        neighborhood: Optional[str] = None,
+        *,
+        use_live_weather: bool = True,
+    ) -> Dict:
+        """Prédiction Bamako : météo live par défaut, repli sur séquences .npy."""
+        if use_live_weather:
+            try:
+                return self.predict_live(commune=commune, neighborhood=neighborhood)
+            except Exception as exc:
+                print(
+                    f"[BamakoPredictionService] ⚠️ predict_live échoué ({exc}), "
+                    "repli séquences entraînement"
+                )
+        return self._predict_from_cached_sequences(commune=commune, neighborhood=neighborhood)
+
+    def predict_live(
+        self,
+        commune: Optional[str] = None,
+        neighborhood: Optional[str] = None,
+    ) -> Dict:
+        """
+        Reconstruit une fenêtre de 30 jours (pas journalier) avec météo récente
+        puis infère avec lstm_model_bamako.h5.
+        """
+        start_time = time.perf_counter()
+        resolved_commune = self._resolve_commune(commune, neighborhood)
+        if not resolved_commune:
+            raise ValueError("Commune ou quartier inconnu. Précisez 'commune' ou 'neighborhood'.")
+
+        commune_info = BAMAKO_COMMUNES.get(resolved_commune, {})
+        lat = commune_info.get("lat")
+        lon = commune_info.get("lon")
+        if lat is None or lon is None:
+            raise ValueError(f"Coordonnées manquantes pour {resolved_commune}")
+
+        seq_len = self.lstm_predictor.sequence_length
+        daily_df, weather_meta = fetch_merged_daily_meteo(
+            float(lat),
+            float(lon),
+            sequence_length=seq_len,
+            forecast_days=self.lstm_predictor.forecast_days,
+        )
+        sequence, feature_cols = build_model_sequence(
+            daily_df,
+            resolved_commune,
+            seq_len,
+            target_n_features=self._model_n_features(),
+        )
+        batch = sequence[np.newaxis, ...]
+        probability = float(self.lstm_predictor.predict(batch)[0])
+        risk_level = self.lstm_predictor._get_risk_level(probability)
+
+        static_features = get_static_features(resolved_commune) or {}
+        risk_factors = get_risk_factors(resolved_commune) or {}
+        duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+        last_row = daily_df.iloc[-1]
+        return {
+            "commune": resolved_commune,
+            "neighborhood": neighborhood,
+            "prediction": {
+                "flood_probability": probability,
+                "risk_level": risk_level,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "sequence_end_date": weather_meta.get("sequence_end_date"),
+                "sequence_start_date": weather_meta.get("sequence_start_date"),
+                "last_day_precipitation_mm": float(last_row.get("precipitation", 0)),
+                "antecedent_precip_7d_mm": float(last_row.get("antecedent_precip_7d", 0)),
+                "coordinates": {"lat": lat, "lon": lon},
+                "source": "lstm_bamako_live",
+                "stale": False,
+            },
+            "context": {
+                "static_features": static_features,
+                "risk_factors": risk_factors,
+                "zones_risque": commune_info.get("zones_risque"),
+            },
+            "metadata": {
+                "latency_ms": duration_ms,
+                "inference_mode": "live_weather",
+                "data_sources": weather_meta.get("data_sources", []),
+                "feature_count": len(feature_cols),
+                "features_used": feature_cols,
+                "weather_error": weather_meta.get("weather_error"),
+                "forecast_days_available": weather_meta.get("forecast_days_available"),
+            },
+        }
+
+    def _predict_from_cached_sequences(
         self,
         commune: Optional[str] = None,
         neighborhood: Optional[str] = None,
@@ -163,7 +266,7 @@ class BamakoPredictionService:
 
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
-        response = {
+        return {
             "commune": resolved_commune,
             "neighborhood": neighborhood,
             "prediction": {
@@ -175,7 +278,8 @@ class BamakoPredictionService:
                 "coordinates": commune_info.get("lat") and commune_info.get("lon")
                 and {"lat": commune_info["lat"], "lon": commune_info["lon"]}
                 or None,
-                "source": "lstm_bamako",
+                "source": "lstm_bamako_cached",
+                "stale": True,
             },
             "context": {
                 "static_features": static_features,
@@ -184,12 +288,12 @@ class BamakoPredictionService:
             },
             "metadata": {
                 "latency_ms": duration_ms,
+                "inference_mode": "cached_npy",
                 "last_sequence_loaded_at": self.last_loaded_at.isoformat(timespec="seconds")
                 if self.last_loaded_at
                 else None,
             },
         }
-        return response
 
     # ------------------------------------------------------------------ #
     # Helpers

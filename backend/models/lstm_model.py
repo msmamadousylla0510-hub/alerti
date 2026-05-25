@@ -11,11 +11,17 @@ import keras
 from keras import layers, models
 from sklearn.preprocessing import MinMaxScaler
 import sys
+from typing import Dict, List
 
 # Add backend to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from utils.config import LSTM_SEQUENCE_LENGTH, LSTM_FORECAST_DAYS, MODEL_DIR
+
+# Entraînement synthétique / lstm_model.h5 : (30 jours × 5 features météo)
+MODEL_FEATURE_NAMES = [
+    'precipitation', 'temperature', 'humidity', 'pressure', 'soil_moisture',
+]
 
 class LSTMPredictor:
     """LSTM model for time series flood prediction"""
@@ -31,25 +37,8 @@ class LSTMPredictor:
         self.model = None
         self.sequence_length = LSTM_SEQUENCE_LENGTH
         self.forecast_days = LSTM_FORECAST_DAYS
-        # Features étendues pour prédiction d'inondations urbaines
-        self.feature_names = [
-            # Météo (temporelles)
-            'precipitation', 'temperature', 'humidity', 'pressure', 'soil_moisture',
-            'antecedent_precip_3d', 'antecedent_precip_7d', 'antecedent_precip_14d',
-            'soil_saturation_index',
-            # Topographie (statiques)
-            'elevation', 'slope', 'distance_to_river', 'in_flood_plain', 'depression_depth',
-            # Infrastructure drainage (statiques)
-            'drainage_density', 'drainage_state', 'drainage_coverage', 'blocked_drainage_pct',
-            # Urbanisation (statiques)
-            'impermeable_surface', 'building_density', 'population_density',
-            # Hydrologie (statiques)
-            'groundwater_level', 'runoff_coefficient', 'infiltration_rate', 'soil_permeability',
-            # Végétation (statiques)
-            'vegetation_cover', 'ndvi_avg',
-            # Vulnérabilité (statiques)
-            'informal_settlement_pct', 'poverty_index', 'flood_preparedness'
-        ]
+        self.feature_names = list(MODEL_FEATURE_NAMES)
+        self.n_features = len(MODEL_FEATURE_NAMES)
         self.load_or_create_model()
     
     def load_or_create_model(self):
@@ -58,8 +47,12 @@ class LSTMPredictor:
             try:
                 self.model = keras.models.load_model(self.model_path)
                 self.scaler = joblib.load(self.scaler_path)
+                self._sync_features_from_model()
                 self._compile_model()
-                print("LSTM model loaded successfully")
+                print(
+                    f"LSTM model loaded successfully "
+                    f"({self.sequence_length}×{self.n_features})"
+                )
             except Exception as e:
                 print(f"Error loading LSTM model: {e}. Creating new model...")
                 self._create_model()
@@ -67,11 +60,18 @@ class LSTMPredictor:
             print("Creating new LSTM model...")
             self._create_model()
     
+    def _sync_features_from_model(self):
+        """Aligne n_features sur le modèle .h5 chargé (ex. 5, pas 30)."""
+        if self.model is None or not getattr(self.model, 'input_shape', None):
+            return
+        shape = self.model.input_shape
+        if shape and len(shape) >= 3 and shape[-1]:
+            self.n_features = int(shape[-1])
+            self.feature_names = MODEL_FEATURE_NAMES[: self.n_features]
+
     def _create_model(self):
         """Create bidirectional LSTM model architecture"""
-        # Input: sequence of features over time
-        # Output: flood probability for next N days
-        input_shape = (self.sequence_length, len(self.feature_names))
+        input_shape = (self.sequence_length, self.n_features)
         
         inputs = keras.Input(shape=input_shape)
         
@@ -109,59 +109,88 @@ class LSTMPredictor:
             metrics=['accuracy', 'mae']
         )
     
-    def prepare_time_series(self, meteo_data):
-        """Prepare time series data from meteorological service"""
-        # Extract daily precipitation data
+    def _antecedent_precip(self, history: List[float], days: int) -> float:
+        if not history:
+            return 0.0
+        return float(sum(history[-days:]))
+
+    def _estimate_soil_moisture(self, precip_history: List[float]) -> float:
+        """Proxy humidité sol (0-1) à partir des précipitations récentes."""
+        total_14 = self._antecedent_precip(precip_history, 14)
+        return float(min(1.0, 0.2 + total_14 / 80.0))
+
+    def _build_meteo_row(
+        self,
+        precip: float,
+        temp: float,
+        humidity: float,
+        pressure: float,
+        precip_history: List[float],
+    ) -> List[float]:
+        """Vecteur (n_features) aligné sur le modèle chargé (5 par défaut)."""
+        row = [
+            float(precip),
+            float(temp),
+            float(humidity),
+            float(pressure),
+            self._estimate_soil_moisture(precip_history),
+        ]
+        return row[: self.n_features]
+
+    def prepare_time_series(self, meteo_data, lat: float, lon: float, location_name: str):
+        """Série (sequence_length, n_features) pour le modèle LSTM."""
         daily_data = meteo_data.get('chirps', {}).get('daily_data', [])
-        
+
         if not daily_data:
-            # Generate synthetic data for prediction
-            return self._generate_synthetic_sequence()
-        
-        # Convert to DataFrame
+            return self._generate_synthetic_sequence(lat, lon, location_name)
+
         df = pd.DataFrame(daily_data)
-        df['date'] = pd.to_datetime(df['date'])
-        
-        # Create feature matrix
-        sequences = []
-        for i in range(len(df) - self.sequence_length + 1):
-            seq = df.iloc[i:i + self.sequence_length]['precipitation'].values
-            
-            # Pad with synthetic features (in production, use real data)
-            features = []
-            for precip in seq:
-                features.append([
-                    precip,  # precipitation
-                    25.0,    # temperature (simulated)
-                    65.0,    # humidity (simulated)
-                    1013.0,  # pressure (simulated)
-                    0.5      # soil_moisture (simulated)
-                ])
-            
-            sequences.append(features)
-        
-        if sequences:
-            return np.array(sequences[-1])  # Use most recent sequence
-        else:
-            return self._generate_synthetic_sequence()
-    
-    def _generate_synthetic_sequence(self):
-        """Generate synthetic sequence when data unavailable"""
-        # Generate realistic sequence for Africa
-        np.random.seed(int(datetime.now().timestamp()))
+        if 'precipitation' not in df.columns:
+            return self._generate_synthetic_sequence(lat, lon, location_name)
+
+        precip_series = df['precipitation'].astype(float).tolist()
+        if len(precip_series) < self.sequence_length:
+            pad = [0.0] * (self.sequence_length - len(precip_series))
+            precip_series = pad + precip_series
+
+        rows = []
+        window = precip_series[-self.sequence_length:]
+        history = precip_series[:-self.sequence_length] if len(precip_series) > self.sequence_length else []
+
+        for i, precip in enumerate(window):
+            hist = history + window[: i + 1]
+            rows.append(
+                self._build_meteo_row(
+                    precip=precip,
+                    temp=28.0,
+                    humidity=65.0,
+                    pressure=1013.0,
+                    precip_history=hist,
+                )
+            )
+
+        return np.array(rows, dtype=np.float32)
+
+    def _generate_synthetic_sequence(self, lat: float, lon: float, location_name: str):
+        """Série synthétique (30×5) quand les données CHIRPS manquent."""
+        np.random.seed(int(datetime.now().timestamp()) % 10000)
         sequence = []
-        
+        precip_history: List[float] = []
+
         for _ in range(self.sequence_length):
-            # Simulate precipitation with some variability
-            precip = max(0, np.random.exponential(2.0))
-            temp = np.random.normal(25, 3)
-            humidity = np.random.uniform(50, 80)
-            pressure = np.random.normal(1013, 5)
-            soil_moisture = np.random.uniform(0.3, 0.7)
-            
-            sequence.append([precip, temp, humidity, pressure, soil_moisture])
-        
-        return np.array(sequence)
+            precip = max(0.0, float(np.random.exponential(2.0)))
+            precip_history.append(precip)
+            sequence.append(
+                self._build_meteo_row(
+                    precip=precip,
+                    temp=float(np.random.normal(25, 3)),
+                    humidity=float(np.random.uniform(50, 80)),
+                    pressure=float(np.random.normal(1013, 5)),
+                    precip_history=precip_history,
+                )
+            )
+
+        return np.array(sequence, dtype=np.float32)
     
     def predict(self, lat, lon, location_name, forecast_data=None):
         """
@@ -190,28 +219,30 @@ class LSTMPredictor:
                 forecast_data = forecast_service.get_forecast_for_lstm(lat, lon, days=self.forecast_days)
             
             # Prepare time series with historical data
-            sequence = self.prepare_time_series(meteo_data)
-            
+            sequence = self.prepare_time_series(meteo_data, lat, lon, location_name)
+            precip_history = [float(row[0]) for row in sequence]
+
             # Enhance sequence with forecast data if available
             if forecast_data and len(forecast_data) > 0:
-                # Combine historical and forecast data for better prediction
-                # Use forecast data to extend the sequence
-                for forecast_day in forecast_data[:min(7, len(forecast_data))]:
-                    forecast_features = [
-                        forecast_day.get('precipitation', 0),
-                        forecast_day.get('temperature', 25),
-                        forecast_day.get('humidity', 60),
-                        forecast_day.get('pressure', 1013),
-                        0.5  # Estimated soil moisture (could be improved)
-                    ]
-                    # Append forecast to sequence (sliding window approach)
-                    sequence = np.append(sequence[1:], [forecast_features], axis=0)
-            
-            # Normalize
-            sequence_reshaped = sequence.reshape(1, self.sequence_length, len(self.feature_names))
-            sequence_scaled = self.scaler.fit_transform(
-                sequence_reshaped.reshape(-1, len(self.feature_names))
-            ).reshape(1, self.sequence_length, len(self.feature_names))
+                for forecast_day in forecast_data[: min(7, len(forecast_data))]:
+                    precip = float(forecast_day.get('precipitation', 0))
+                    precip_history.append(precip)
+                    forecast_row = self._build_meteo_row(
+                        precip=precip,
+                        temp=float(forecast_day.get('temperature', 25)),
+                        humidity=float(forecast_day.get('humidity', 60)),
+                        pressure=float(forecast_day.get('pressure', 1013)),
+                        precip_history=precip_history,
+                    )
+                    sequence = np.append(sequence[1:], [forecast_row], axis=0)
+
+            nf = self.n_features
+            flat = sequence.reshape(-1, nf)
+            if hasattr(self.scaler, 'n_features_in_') and self.scaler.n_features_in_ == nf:
+                scaled_flat = self.scaler.transform(flat)
+            else:
+                scaled_flat = self.scaler.fit_transform(flat)
+            sequence_scaled = scaled_flat.reshape(1, self.sequence_length, nf)
             
             # Predict
             if self.model:

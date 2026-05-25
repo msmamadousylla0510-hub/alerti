@@ -2,9 +2,14 @@
 Configuration file for Flood Forecast System
 """
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-load_dotenv()
+# Toujours charger alerti/.env (pas une variable shell obsolète ni un autre cwd)
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_ENV_FILE = _PROJECT_ROOT / ".env"
+load_dotenv(_ENV_FILE, override=True)
 
 # API Keys (set in .env file)
 EARTHDATA_USERNAME = os.getenv('EARTHDATA_USERNAME', '')
@@ -20,7 +25,7 @@ EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
 EMAIL_USER = os.getenv('EMAIL_USER', '')
 EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD', '')
-OPENWEATHERMAP_API_KEY = os.getenv('OPENWEATHERMAP_API_KEY', '')
+OPENWEATHERMAP_API_KEY = (os.getenv('OPENWEATHERMAP_API_KEY') or '').strip()
 FCM_SERVER_KEY = os.getenv('FCM_SERVER_KEY', '')
 FCM_CREDENTIALS_PATH = os.getenv('FCM_CREDENTIALS_PATH', '')
 

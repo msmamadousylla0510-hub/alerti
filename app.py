@@ -71,8 +71,122 @@ alert_service = AlertService()
 notification_service = NotificationService()
 neighborhood_service = NeighborhoodService() if 'NeighborhoodService' in globals() else None
 weather_forecast_service = WeatherForecastService() if 'WeatherForecastService' in globals() else None
+if weather_forecast_service:
+    _diag = weather_forecast_service.key_diagnostics()
+    _ow_len = _diag.get("key_length", 0)
+    if _ow_len:
+        _pfx = _diag.get("key_prefix", "")
+        _sfx = _diag.get("key_suffix", "")
+        _match = _diag.get("file_key_matches_runtime")
+        _st = _diag.get("onecall_3_0_test_status")
+        print(
+            f"🌤️ OpenWeather: clé .env {_pfx}…{_sfx} ({_ow_len} car.) "
+            f"fichier↔runtime={'OK' if _match else 'DIFF'} "
+            f"test 3.0 HTTP {_st}"
+        )
+        if _st != 200:
+            print(f"   ↳ {_diag.get('onecall_3_0_test_message', '')[:200]}")
+    else:
+        print("⚠️ OpenWeather: OPENWEATHERMAP_API_KEY manquante dans alerti/.env")
 push_notification_service = PushNotificationService() if 'PushNotificationService' in globals() else None
 bamako_prediction_service = BamakoPredictionService() if 'BamakoPredictionService' in globals() else None
+
+
+def _predict_neighborhood_core(neighborhood_name, city, bbox=None):
+    """
+    Prédiction quartier : Bamako → modèle LSTM Bamako (comme le dashboard web),
+    autres villes → hybride LSTM+CNN.
+    """
+    city_lower = city.lower()
+    coords = neighborhood_service.get_neighborhood_coordinates(
+        neighborhood_name, city_lower
+    )
+    if not coords:
+        return None, {'error': f'Neighborhood {neighborhood_name} not found in {city}'}, 404
+
+    lat = coords['lat']
+    lon = coords['lon']
+    if bbox is None:
+        bbox = [lon - 0.05, lat - 0.05, lon + 0.05, lat + 0.05]
+
+    forecast_data = None
+    if weather_forecast_service:
+        forecast_data = weather_forecast_service.get_forecast_for_lstm(lat, lon, days=7)
+
+    prediction = None
+    model_source = 'hybrid'
+    commune = None
+    context = None
+    metadata = None
+
+    if city_lower == 'bamako' and bamako_prediction_service:
+        try:
+            bamako_result = bamako_prediction_service.predict(
+                neighborhood=neighborhood_name
+            )
+            prediction = dict(bamako_result.get('prediction') or {})
+            prediction['coordinates'] = coords
+            model_source = prediction.get('source', 'lstm_bamako')
+            commune = bamako_result.get('commune')
+            context = bamako_result.get('context')
+            metadata = bamako_result.get('metadata')
+        except (ValueError, Exception) as exc:
+            app.logger.warning(
+                "Bamako LSTM indisponible pour %s, repli hybride: %s",
+                neighborhood_name,
+                exc,
+            )
+
+    if prediction is None:
+        prediction = predictor.predict(
+            lat,
+            lon,
+            bbox,
+            f"{neighborhood_name}, {city}",
+            forecast_data=forecast_data,
+        )
+        prediction = dict(prediction)
+        prediction['coordinates'] = coords
+        model_source = prediction.get('model_type', 'hybrid')
+
+    risk_level = prediction.get('risk_level', 'none')
+    payload = {
+        'neighborhood': neighborhood_name,
+        'city': city,
+        'coordinates': coords,
+        'prediction': prediction,
+        'model_source': model_source,
+        'forecast': forecast_data,
+        'recommendations': alert_service.get_recommendations(risk_level),
+        'timestamp': datetime.now().isoformat(),
+    }
+    if commune:
+        payload['commune'] = commune
+    if context:
+        payload['context'] = context
+    if metadata:
+        payload['metadata'] = metadata
+
+    alert = None
+    if prediction.get('flood_probability', 0) > 0.2:
+        alert = alert_service.create_alert(
+            f"{neighborhood_name}, {city}",
+            risk_level,
+            prediction,
+            lat=lat,
+            lon=lon,
+        )
+        if risk_level in ['critical', 'high']:
+            notification_service.send_alert_notifications(alert)
+            if push_notification_service:
+                push_notification_service.send_alert_to_location(
+                    alert,
+                    location=city,
+                    neighborhood=neighborhood_name,
+                )
+    payload['alert'] = alert
+    return payload, None, 200
+
 
 @app.route('/')
 def index():
@@ -93,9 +207,35 @@ def index():
             'subscribe': '/api/alert/subscribe',
             'subscribe_push': '/api/subscribe/push',
             'satellite_image': '/api/satellite-image/<location>',
-            'countries': '/api/countries'
+            'countries': '/api/countries',
+            'weather_at': '/api/weather/at?lat=&lon=',
         }
     })
+
+
+@app.route('/api/weather/diag', methods=['GET'])
+def weather_key_diagnostics():
+    """Vérifie quelle clé OpenWeather est utilisée (empreinte, pas la clé complète)."""
+    if not weather_forecast_service:
+        return jsonify({'error': 'Weather service not available'}), 503
+    return jsonify(weather_forecast_service.key_diagnostics())
+
+
+@app.route('/api/weather/at', methods=['GET', 'OPTIONS'])
+def weather_at_coordinates():
+    """Météo + pluie 24h + qualité de l'air pour des coordonnées GPS."""
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    if not weather_forecast_service:
+        return jsonify({'error': 'Weather service not available'}), 503
+    lat = request.args.get('lat', type=float)
+    lon = request.args.get('lon', type=float)
+    if lat is None or lon is None:
+        return jsonify({'error': 'Query params lat and lon required'}), 400
+    snapshot = weather_forecast_service.get_weather_snapshot(lat, lon)
+    status = 200 if snapshot.get("success", True) else 503
+    return jsonify(snapshot), status
+
 
 @app.route('/api/predict', methods=['POST'])
 def predict_flood():
@@ -208,12 +348,14 @@ def predict_bamako_commune():
 
         prediction = result.get('prediction', {})
         app.logger.info(
-            "[BamakoPredict] commune=%s neighborhood=%s risk=%s prob=%.3f latency=%sms",
+            "[BamakoPredict] commune=%s neighborhood=%s risk=%s prob=%.3f mode=%s end=%s latency=%sms",
             result.get('commune'),
             result.get('neighborhood'),
             prediction.get('risk_level'),
             prediction.get('flood_probability', 0.0),
-            result.get('metadata', {}).get('latency_ms')
+            result.get('metadata', {}).get('inference_mode'),
+            prediction.get('sequence_end_date'),
+            result.get('metadata', {}).get('latency_ms'),
         )
         return jsonify(result)
     except ValueError as exc:
@@ -390,57 +532,11 @@ def predict_neighborhood(neighborhood_name):
         
         if not neighborhood_service:
             return jsonify({'error': 'Neighborhood service not available'}), 503
-        
-        # Get neighborhood coordinates
-        coords = neighborhood_service.get_neighborhood_coordinates(neighborhood_name, city)
-        
-        if not coords:
-            return jsonify({'error': f'Neighborhood {neighborhood_name} not found in {city}'}), 404
-        
-        lat = coords['lat']
-        lon = coords['lon']
-        bbox = [lon - 0.05, lat - 0.05, lon + 0.05, lat + 0.05]
-        
-        # Get weather forecast
-        forecast_data = None
-        if weather_forecast_service:
-            forecast_data = weather_forecast_service.get_forecast_for_lstm(lat, lon, days=7)
-        
-        # Get prediction
-        prediction = predictor.predict(lat, lon, bbox, f"{neighborhood_name}, {city}")
-        
-        # Create alert if needed
-        alert = None
-        if prediction.get('flood_probability', 0) > 0.2:
-            alert = alert_service.create_alert(
-                f"{neighborhood_name}, {city}",
-                prediction.get('risk_level', 'low'),
-                prediction,
-                lat=lat,
-                lon=lon
-            )
-            
-            # Send notifications
-            if prediction.get('risk_level') in ['critical', 'high']:
-                notification_service.send_alert_notifications(alert)
-                # Also send push notifications
-                if push_notification_service:
-                    push_notification_service.send_alert_to_location(
-                        alert, 
-                        location=city, 
-                        neighborhood=neighborhood_name
-                    )
-        
-        return jsonify({
-            'neighborhood': neighborhood_name,
-            'city': city,
-            'coordinates': coords,
-            'prediction': prediction,
-            'alert': alert,
-            'forecast': forecast_data,
-            'recommendations': alert_service.get_recommendations(prediction.get('risk_level', 'none')),
-            'timestamp': datetime.now().isoformat()
-        })
+
+        payload, err, status = _predict_neighborhood_core(neighborhood_name, city)
+        if err:
+            return jsonify(err), status
+        return jsonify(payload)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -459,56 +555,14 @@ def predict_neighborhood_post():
         
         if not neighborhood_service:
             return jsonify({'error': 'Neighborhood service not available'}), 503
-        
-        # Get neighborhood coordinates
-        coords = neighborhood_service.get_neighborhood_coordinates(neighborhood_name, city)
-        
-        if not coords:
-            return jsonify({'error': f'Neighborhood {neighborhood_name} not found in {city}'}), 404
-        
-        lat = coords['lat']
-        lon = coords['lon']
-        bbox = data.get('bbox', [lon - 0.05, lat - 0.05, lon + 0.05, lat + 0.05])
-        
-        # Get weather forecast
-        forecast_data = None
-        if weather_forecast_service:
-            forecast_data = weather_forecast_service.get_forecast_for_lstm(lat, lon, days=7)
-        
-        # Get prediction
-        prediction = predictor.predict(lat, lon, bbox, f"{neighborhood_name}, {city}")
-        
-        # Create alert if needed
-        alert = None
-        if prediction.get('flood_probability', 0) > 0.2:
-            alert = alert_service.create_alert(
-                f"{neighborhood_name}, {city}",
-                prediction.get('risk_level', 'low'),
-                prediction,
-                lat=lat,
-                lon=lon
-            )
-            
-            # Send notifications
-            if prediction.get('risk_level') in ['critical', 'high']:
-                notification_service.send_alert_notifications(alert)
-                if push_notification_service:
-                    push_notification_service.send_alert_to_location(
-                        alert,
-                        location=city,
-                        neighborhood=neighborhood_name
-                    )
-        
-        return jsonify({
-            'neighborhood': neighborhood_name,
-            'city': city,
-            'coordinates': coords,
-            'prediction': prediction,
-            'alert': alert,
-            'forecast': forecast_data,
-            'recommendations': alert_service.get_recommendations(prediction.get('risk_level', 'none')),
-            'timestamp': datetime.now().isoformat()
-        })
+
+        bbox = data.get('bbox')
+        payload, err, status = _predict_neighborhood_core(
+            neighborhood_name, city, bbox=bbox
+        )
+        if err:
+            return jsonify(err), status
+        return jsonify(payload)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

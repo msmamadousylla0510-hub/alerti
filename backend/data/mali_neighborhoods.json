@@ -2,108 +2,926 @@
   "mali_bamako": {
     "neighborhoods": [
       {
-        "name": "Commune I",
-        "city": "Bamako",
+        "name": "Badalabougou Est",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.65,
-          "lon": -8.0
+          "lat": 12.6237544,
+          "lon": -7.9849181
         },
-        "type": "commune"
+        "type": "suburb"
       },
       {
-        "name": "Commune II",
-        "city": "Bamako",
+        "name": "ACI 2000",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.64,
-          "lon": -8.0
+          "lat": 12.6338826,
+          "lon": -8.0270013
         },
-        "type": "commune"
+        "type": "suburb"
       },
       {
-        "name": "Commune III",
-        "city": "Bamako",
+        "name": "Quinzambougou",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.63,
-          "lon": -8.0
+          "lat": 12.6523152,
+          "lon": -7.9740563
         },
-        "type": "commune"
+        "type": "suburb",
+        "commune": "Commune II"
       },
       {
-        "name": "Commune IV",
-        "city": "Bamako",
+        "name": "Ouolofobougou",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.62,
-          "lon": -8.0
+          "lat": 12.649773,
+          "lon": -8.0106081
         },
-        "type": "commune"
+        "type": "neighbourhood"
       },
       {
-        "name": "Commune V",
-        "city": "Bamako",
+        "name": "Dar Salam",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.61,
-          "lon": -8.0
+          "lat": 12.6519,
+          "lon": -8.00527
         },
-        "type": "commune"
+        "type": "suburb",
+        "commune": "Commune III"
       },
       {
-        "name": "Commune VI",
-        "city": "Bamako",
+        "name": "Bagadadji",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.60,
-          "lon": -8.0
+          "lat": 12.6510633,
+          "lon": -7.9900605
         },
-        "type": "commune"
+        "type": "suburb"
       },
       {
         "name": "Badalabougou",
-        "city": "Bamako",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.65,
-          "lon": -7.98
+          "lat": 12.6189442,
+          "lon": -7.9933098
         },
-        "type": "neighbourhood"
+        "type": "suburb",
+        "commune": "Commune V"
       },
       {
-        "name": "Aci 2000",
-        "city": "Bamako",
+        "name": "Faso Kanu",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.64,
-          "lon": -7.99
+          "lat": 12.6115736,
+          "lon": -7.9694606
         },
-        "type": "neighbourhood"
+        "type": "suburb"
       },
       {
-        "name": "Hamdallaye",
-        "city": "Bamako",
+        "name": "Hippodrome I",
+        "city": "bamako",
         "coordinates": {
-          "lat": 12.63,
-          "lon": -8.01
+          "lat": 12.6598269,
+          "lon": -7.9755373
         },
-        "type": "neighbourhood"
+        "type": "suburb"
       },
       {
         "name": "Niaréla",
+        "city": "bamako",
+        "coordinates": {
+          "lat": 12.6437885,
+          "lon": -7.9840464
+        },
+        "type": "suburb",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Torokorobougou",
+        "city": "bamako",
+        "coordinates": {
+          "lat": 12.6126666,
+          "lon": -8.0036043
+        },
+        "type": "suburb",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Médina-coura",
+        "city": "bamako",
+        "coordinates": {
+          "lat": 12.6541491,
+          "lon": -7.9896635
+        },
+        "type": "suburb",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Banconi",
         "city": "Bamako",
         "coordinates": {
-          "lat": 12.62,
-          "lon": -8.02
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Banconi Sikoro",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Banconi-Plateau",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Sikoro",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Sikoro-Farada",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Korofina Nord",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Korofina Sud",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Korofina-Sud",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Fadjiguila",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Djelibougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Djélibougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6563,
+          "lon": -7.9928
+        },
+        "type": "neighbourhood",
+        "commune": "Commune I"
+      },
+      {
+        "name": "Niarela",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Sans Fil",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Quimzambougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Bakaribougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Bougouba",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Zone Industrielle",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Hippodrome",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "TSF Campement des pêcheurs",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Campement des pêcheurs TSF",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Bozola campement des pêcheurs",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Medina Coura",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Médina Coura",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Ngolonina",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6389,
+          "lon": -8.0029
+        },
+        "type": "neighbourhood",
+        "commune": "Commune II"
+      },
+      {
+        "name": "Koulouba",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Sogonanfing",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Sogonafing",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Badialan III",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Badialan I",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Badalan I",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Bamako Coura",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Bamako-coura",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Niomirambougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Quartier du fleuve",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Ouolofobougou Bolibabana",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Ntomikorobougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "N'Tomikorobougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Darsalam",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Centre-ville BDM",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Enceinte Base B",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Point G",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6208,
+          "lon": -8.0192
+        },
+        "type": "neighbourhood",
+        "commune": "Commune III"
+      },
+      {
+        "name": "Kalabambougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Lafiabougou Bougoudani",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Lafiabougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Taliko Tietieni",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Taliko",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Sébénikoro",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Sebenikoro",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Sebenikororo SEMA 2",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Woyowayanko",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6531,
+          "lon": -8.0331
+        },
+        "type": "neighbourhood",
+        "commune": "Commune IV"
+      },
+      {
+        "name": "Lafiabougou près phar",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Lafiabougou Phar",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Sebenikoro (Ilot)",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Djicoroni Para",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Djicoroni para flabougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Bacodjicoroni",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Bacodjicoroni Heremakono",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Sabalibougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Kalaban Coura",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Daoudabougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.5989,
+          "lon": -8.0508
+        },
+        "type": "neighbourhood",
+        "commune": "Commune V"
+      },
+      {
+        "name": "Yirimadio",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Missabougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Magnambougou",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Magnambougou Bada",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Sirakoro Méguetana",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Sirakoro Megetana",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Dianeguela",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      },
+      {
+        "name": "Dianéguela",
+        "city": "Bamako",
+        "coordinates": {
+          "lat": 12.6144,
+          "lon": -7.9453
+        },
+        "type": "neighbourhood",
+        "commune": "Commune VI"
+      }
+    ],
+    "last_updated": "2026-05-16T11:55:54.759602",
+    "city": "bamako",
+    "count": 80
+  },
+  "mali_kayes": {
+    "neighborhoods": [
+      {
+        "name": "Kayes N'Di",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4586026,
+          "lon": -11.4322193
+        },
+        "type": "suburb"
+      },
+      {
+        "name": "Kamankolé",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4533518,
+          "lon": -11.4745426
+        },
+        "type": "suburb"
+      },
+      {
+        "name": "Kayes N'Di Dral",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4631323,
+          "lon": -11.4300821
         },
         "type": "neighbourhood"
       },
       {
-        "name": "Quartier du Fleuve",
-        "city": "Bamako",
+        "name": "Khasso Extension",
+        "city": "kayes",
         "coordinates": {
-          "lat": 12.61,
-          "lon": -8.03
+          "lat": 14.4297193,
+          "lon": -11.4214347
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Khasso Campement",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4422254,
+          "lon": -11.4228979
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Mission Catholique",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4375986,
+          "lon": -11.438283
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Plateau Coura",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4374791,
+          "lon": -11.4403054
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Lafiabougou Nord",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4438046,
+          "lon": -11.4486814
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Route de Samé",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4546647,
+          "lon": -11.4630208
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Mission Protestante",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4483973,
+          "lon": -11.459373
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Centre Commercial",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4503986,
+          "lon": -11.4371093
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Quinzambougou",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4420052,
+          "lon": -11.4276293
+        },
+        "type": "neighbourhood"
+      },
+      {
+        "name": "Coulibalybougou",
+        "city": "kayes",
+        "coordinates": {
+          "lat": 14.4204248,
+          "lon": -11.4270379
         },
         "type": "neighbourhood"
       }
     ],
-    "last_updated": "2025-01-01T00:00:00",
-    "city": "Bamako",
-    "count": 11
+    "last_updated": "2026-05-16T12:07:27.759031",
+    "city": "kayes",
+    "count": 13
   }
 }
-

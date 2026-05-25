@@ -18,9 +18,17 @@ class NeighborhoodService:
     """Service for fetching neighborhood data from OpenStreetMap"""
     
     def __init__(self, cache_file=None):
-        # Overpass API endpoint
-        self.overpass_url = "https://overpass-api.de/api/interpreter"
+        self.overpass_urls = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://overpass.openstreetmap.ru/api/interpreter",
+        ]
+        self._overpass_index = 0
         self.overpass_timeout = 25
+        self.overpass_headers = {
+            "Accept": "application/json",
+            "User-Agent": "Alerti-FloodSense/1.0 (Mali flood alerts)",
+        }
         
         # Cache file for neighborhoods
         if cache_file is None:
@@ -49,6 +57,30 @@ class NeighborhoodService:
                 json.dump(self.cache, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Error saving cache: {e}")
+
+    def _fetch_overpass(self, query: str) -> Optional[Dict]:
+        """POST Overpass avec en-têtes JSON et bascule entre miroirs."""
+        last_error = None
+        for _ in range(len(self.overpass_urls)):
+            url = self.overpass_urls[self._overpass_index]
+            try:
+                response = requests.post(
+                    url,
+                    data=query,
+                    headers=self.overpass_headers,
+                    timeout=self.overpass_timeout,
+                )
+                if response.status_code in (429, 503, 504):
+                    self._overpass_index = (self._overpass_index + 1) % len(self.overpass_urls)
+                    continue
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                self._overpass_index = (self._overpass_index + 1) % len(self.overpass_urls)
+        if last_error:
+            print(f"Error fetching neighborhoods from Overpass API: {last_error}")
+        return None
     
     def get_mali_neighborhoods(self, city: str) -> List[Dict]:
         """
@@ -96,30 +128,22 @@ class NeighborhoodService:
         query = f"""
         [out:json][timeout:{self.overpass_timeout}];
         (
-          relation["admin_level"="9"]["name"~"{city}",i](around:5000,{coords['lat']},{coords['lon']});
-          way["place"="neighbourhood"]["name"](around:5000,{coords['lat']},{coords['lon']});
-          way["place"="suburb"]["name"](around:5000,{coords['lat']},{coords['lon']});
-          way["residential"="yes"]["name"](around:5000,{coords['lat']},{coords['lon']});
+          way["place"~"neighbourhood|suburb"]["name"](around:5000,{coords['lat']},{coords['lon']});
+          node["place"~"neighbourhood|suburb"]["name"](around:5000,{coords['lat']},{coords['lon']});
         );
-        out geom;
-        (._;>;);
-        out geom;
+        out center;
         """
-        
+
+        data = self._fetch_overpass(query)
         try:
-            response = requests.post(
-                self.overpass_url,
-                data={'data': query},
-                timeout=self.overpass_timeout
-            )
-            response.raise_for_status()
-            data = response.json()
+            if data is None:
+                raise requests.RequestException("Overpass returned no data")
             
             neighborhoods = []
             seen_names = set()
             
             for element in data.get('elements', []):
-                if element.get('type') in ['way', 'relation']:
+                if element.get('type') in ['way', 'relation', 'node']:
                     name = element.get('tags', {}).get('name', '')
                     if name and name.lower() not in seen_names:
                         # Get center coordinates
