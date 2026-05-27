@@ -1,9 +1,6 @@
 """
-Models package for Flood Prediction System
+Models package — imports à la demande uniquement (évite cv2/TensorFlow0 via __init__).
+Exemple : from models.lstm_model_bamako import LSTMPredictorBamako
 """
-from .lstm_model import LSTMPredictor
-from .cnn_model import CNNPredictor
-from .hybrid_model import HybridFloodPredictor
 
-__all__ = ['LSTMPredictor', 'CNNPredictor', 'HybridFloodPredictor']
-
+__all__ = []

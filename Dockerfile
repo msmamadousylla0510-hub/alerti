@@ -8,11 +8,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Dépendances système minimales (OpenCV / wheels scientifiques)
+# Dépendances système (TensorFlow CPU, OpenCV headless, rasterio)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libglib2.0-0 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
+
+ENV TF_ENABLE_ONEDNN_OPTS=0
 
 COPY requirements.txt .
 RUN pip install --upgrade pip setuptools wheel \
