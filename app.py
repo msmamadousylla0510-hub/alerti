@@ -6,71 +6,106 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
 import sys
+import traceback
 from datetime import datetime, timedelta
+from typing import Optional
 
 # Add backend directory to path
 backend_path = os.path.join(os.path.dirname(__file__), 'backend')
 sys.path.insert(0, backend_path)
 
-try:
-    from models.hybrid_model import HybridFloodPredictor
-    from services.africa_data_service import AfricaDataService
-    from services.satellite_service import SatelliteService
-    from services.alert_service import AlertService
-    from services.notification_service import NotificationService
-    from services.neighborhood_service import NeighborhoodService
-    from services.weather_forecast_service import WeatherForecastService
-    from services.push_notification_service import PushNotificationService
-    from services.bamako_prediction_service import BamakoPredictionService
-    from utils.config import AFRICAN_LOCATIONS, MALI_CITIES
-except ImportError as e:
-    print(f"Warning: Could not import modules: {e}")
-    print("Creating placeholder services...")
-    # Placeholder classes for development
-    class HybridFloodPredictor:
-        def predict(self, *args, **kwargs):
-            return {'flood_probability': 0.5, 'risk_level': 'medium'}
-        def __init__(self):
-            pass
-    
-    class AfricaDataService:
-        def get_chirps_precipitation(self, *args, **kwargs):
-            return {'total_precipitation': 0, 'average_daily_precipitation': 0}
-    
-    class SatelliteService:
-        pass
-    
-    class AlertService:
-        def create_alert(self, *args, **kwargs):
-            return None
-        def get_recommendations(self, level):
-            return []
-        def get_active_alerts(self, *args, **kwargs):
-            return []
-    
-    class NotificationService:
-        def subscribe(self, *args, **kwargs):
-            return {}
-        def send_alert_notifications(self, alert):
-            pass
+from utils.config import AFRICAN_LOCATIONS, MALI_CITIES
 
-    class BamakoPredictionService:
-        def predict(self, *args, **kwargs):
-            raise RuntimeError("BamakoPredictionService indisponible (modules non chargés)")
-    
-    from utils.config import AFRICAN_LOCATIONS
+_startup_errors: dict[str, str] = {}
+_hybrid_predictor = None
+_hybrid_load_error: Optional[str] = None
+
+
+def _load_service(label: str, factory):
+    """Charge un service isolément (un échec n'empêche pas les autres)."""
+    try:
+        service = factory()
+        print(f"[startup] OK {label}")
+        return service
+    except Exception as exc:
+        msg = f"{type(exc).__name__}: {exc}"
+        _startup_errors[label] = msg
+        print(f"[startup] FAIL {label}: {msg}")
+        traceback.print_exc()
+        return None
+
+
+def _create_weather_service():
+    from services.weather_forecast_service import WeatherForecastService
+    return WeatherForecastService()
+
+
+def _create_bamako_service():
+    from services.bamako_prediction_service import BamakoPredictionService
+    return BamakoPredictionService()
+
+
+def _create_neighborhood_service():
+    from services.neighborhood_service import NeighborhoodService
+    return NeighborhoodService()
+
+
+def _create_africa_data_service():
+    from services.africa_data_service import AfricaDataService
+    return AfricaDataService()
+
+
+def _create_alert_service():
+    from services.alert_service import AlertService
+    return AlertService()
+
+
+def _create_notification_service():
+    from services.notification_service import NotificationService
+    return NotificationService()
+
+
+def _create_push_service():
+    from services.push_notification_service import PushNotificationService
+    return PushNotificationService()
+
+
+def _create_satellite_service():
+    from services.satellite_service import SatelliteService
+    return SatelliteService()
+
+
+def get_hybrid_predictor():
+    """Charge le modèle hybride LSTM+CNN à la demande (évite de bloquer le démarrage)."""
+    global _hybrid_predictor, _hybrid_load_error
+    if _hybrid_predictor is not None:
+        return _hybrid_predictor
+    if _hybrid_load_error:
+        raise RuntimeError(_hybrid_load_error)
+    try:
+        from models.hybrid_model import HybridFloodPredictor
+        _hybrid_predictor = HybridFloodPredictor()
+        print("[startup] OK hybrid (lazy)")
+        return _hybrid_predictor
+    except Exception as exc:
+        _hybrid_load_error = f"{type(exc).__name__}: {exc}"
+        _startup_errors["hybrid"] = _hybrid_load_error
+        traceback.print_exc()
+        raise RuntimeError(_hybrid_load_error) from exc
+
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize services
-predictor = HybridFloodPredictor()
-africa_data_service = AfricaDataService()
-satellite_service = SatelliteService() if 'SatelliteService' in globals() else None
-alert_service = AlertService()
-notification_service = NotificationService()
-neighborhood_service = NeighborhoodService() if 'NeighborhoodService' in globals() else None
-weather_forecast_service = WeatherForecastService() if 'WeatherForecastService' in globals() else None
+weather_forecast_service = _load_service("weather", _create_weather_service)
+bamako_prediction_service = _load_service("bamako", _create_bamako_service)
+neighborhood_service = _load_service("neighborhood", _create_neighborhood_service)
+africa_data_service = _load_service("africa_data", _create_africa_data_service)
+alert_service = _load_service("alert", _create_alert_service)
+notification_service = _load_service("notification", _create_notification_service)
+push_notification_service = _load_service("push", _create_push_service)
+satellite_service = _load_service("satellite", _create_satellite_service)
+
 if weather_forecast_service:
     _diag = weather_forecast_service.key_diagnostics()
     _ow_len = _diag.get("key_length", 0)
@@ -80,16 +115,13 @@ if weather_forecast_service:
         _match = _diag.get("file_key_matches_runtime")
         _st = _diag.get("onecall_3_0_test_status")
         print(
-            f"🌤️ OpenWeather: clé .env {_pfx}…{_sfx} ({_ow_len} car.) "
-            f"fichier↔runtime={'OK' if _match else 'DIFF'} "
+            f"🌤️ OpenWeather: clé {_pfx}…{_sfx} ({_ow_len} car.) "
             f"test 3.0 HTTP {_st}"
         )
         if _st != 200:
             print(f"   ↳ {_diag.get('onecall_3_0_test_message', '')[:200]}")
     else:
-        print("⚠️ OpenWeather: OPENWEATHERMAP_API_KEY manquante dans alerti/.env")
-push_notification_service = PushNotificationService() if 'PushNotificationService' in globals() else None
-bamako_prediction_service = BamakoPredictionService() if 'BamakoPredictionService' in globals() else None
+        print("⚠️ OpenWeather: OPENWEATHERMAP_API_KEY manquante (variables Railway)")
 
 
 def _predict_neighborhood_core(neighborhood_name, city, bbox=None):
@@ -138,7 +170,7 @@ def _predict_neighborhood_core(neighborhood_name, city, bbox=None):
             )
 
     if prediction is None:
-        prediction = predictor.predict(
+        prediction = get_hybrid_predictor().predict(
             lat,
             lon,
             bbox,
@@ -188,6 +220,26 @@ def _predict_neighborhood_core(neighborhood_name, city, bbox=None):
     return payload, None, 200
 
 
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Diagnostic démarrage (Railway / debug)."""
+    return jsonify({
+        'status': 'ok' if not _startup_errors else 'degraded',
+        'services': {
+            'weather': weather_forecast_service is not None,
+            'bamako': bamako_prediction_service is not None,
+            'neighborhood': neighborhood_service is not None,
+            'hybrid_lazy': _hybrid_predictor is not None,
+        },
+        'startup_errors': _startup_errors,
+        'openweather': (
+            weather_forecast_service.key_diagnostics()
+            if weather_forecast_service
+            else None
+        ),
+    })
+
+
 @app.route('/')
 def index():
     """Root endpoint"""
@@ -195,6 +247,7 @@ def index():
         'message': 'Flood Forecast API for Africa',
         'version': '1.0.0',
         'endpoints': {
+            'health': '/api/health',
             'predict': '/api/predict',
             'predict_meteo': '/api/predict-meteo',
             'predict_image': '/api/predict-image',
@@ -217,7 +270,10 @@ def index():
 def weather_key_diagnostics():
     """Vérifie quelle clé OpenWeather est utilisée (empreinte, pas la clé complète)."""
     if not weather_forecast_service:
-        return jsonify({'error': 'Weather service not available'}), 503
+        return jsonify({
+            'error': 'Weather service not available',
+            'startup_errors': _startup_errors,
+        }), 503
     return jsonify(weather_forecast_service.key_diagnostics())
 
 
@@ -227,7 +283,10 @@ def weather_at_coordinates():
     if request.method == 'OPTIONS':
         return ('', 204)
     if not weather_forecast_service:
-        return jsonify({'error': 'Weather service not available'}), 503
+        return jsonify({
+            'error': 'Weather service not available',
+            'startup_errors': _startup_errors,
+        }), 503
     lat = request.args.get('lat', type=float)
     lon = request.args.get('lon', type=float)
     if lat is None or lon is None:
@@ -261,7 +320,7 @@ def predict_flood():
         bbox = data.get('bbox', [lon - 0.1, lat - 0.1, lon + 0.1, lat + 0.1])
         
         # Get comprehensive prediction using hybrid model
-        prediction = predictor.predict(lat, lon, bbox, location_name)
+        prediction = get_hybrid_predictor().predict(lat, lon, bbox, location_name)
         
         # Create alert if needed
         if prediction.get('flood_probability', 0) > 0.2:
@@ -305,8 +364,9 @@ def predict_flood_meteo():
             return jsonify({'error': 'Latitude and longitude required'}), 400
         
         # Use LSTM model only
-        if hasattr(predictor, 'lstm_predictor'):
-            prediction = predictor.lstm_predictor.predict(lat, lon, location_name)
+        _hybrid = get_hybrid_predictor()
+        if hasattr(_hybrid, 'lstm_predictor'):
+            prediction = _hybrid.lstm_predictor.predict(lat, lon, location_name)
         else:
             prediction = {'flood_probability': 0.3, 'risk_level': 'low', 'model_type': 'LSTM'}
         
@@ -329,11 +389,26 @@ def predict_bamako_commune():
         return ('', 204)
 
     if not bamako_prediction_service:
-        return jsonify({'error': 'Bamako prediction service not available'}), 503
+        return jsonify({
+            'error': 'Bamako prediction service not available',
+            'startup_errors': _startup_errors,
+        }), 503
 
     data = request.json or {}
     commune = data.get('commune')
     neighborhood = data.get('neighborhood')
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    if neighborhood and not commune:
+        from utils.bamako_neighborhoods import (
+            get_commune_from_neighborhood,
+            resolve_neighborhood_from_localite,
+        )
+        if not get_commune_from_neighborhood(neighborhood):
+            resolved = resolve_neighborhood_from_localite(neighborhood)
+            if resolved:
+                neighborhood = resolved
 
     if not commune and not neighborhood:
         return jsonify({'error': 'Provide either a commune or a neighborhood name'}), 400
@@ -341,7 +416,9 @@ def predict_bamako_commune():
     try:
         result = bamako_prediction_service.predict(
             commune=commune,
-            neighborhood=neighborhood
+            neighborhood=neighborhood,
+            latitude=latitude,
+            longitude=longitude,
         )
         if neighborhood and not result.get('neighborhood'):
             result['neighborhood'] = neighborhood
@@ -379,8 +456,9 @@ def predict_flood_image():
             return jsonify({'error': 'Latitude and longitude required'}), 400
         
         # Use CNN model only
-        if hasattr(predictor, 'cnn_predictor'):
-            prediction = predictor.cnn_predictor.predict_image(lat, lon, bbox, location_name)
+        _hybrid = get_hybrid_predictor()
+        if hasattr(_hybrid, 'cnn_predictor'):
+            prediction = _hybrid.cnn_predictor.predict_image(lat, lon, bbox, location_name)
         else:
             prediction = {'flood_probability': 0.2, 'risk_level': 'low', 'model_type': 'CNN'}
         
@@ -431,7 +509,7 @@ def get_forecast(country):
         bbox = [lon - 0.5, lat - 0.5, lon + 0.5, lat + 0.5]
         
         # Get comprehensive prediction
-        prediction = predictor.predict(lat, lon, bbox, location_name)
+        prediction = get_hybrid_predictor().predict(lat, lon, bbox, location_name)
         
         # Get historical data for context
         historical_data = africa_data_service.get_chirps_precipitation(

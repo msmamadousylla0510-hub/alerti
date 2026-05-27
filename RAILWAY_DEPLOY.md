@@ -29,11 +29,19 @@ git push
 
 Copier depuis `.env` :
 
-- `OPENWEATHERMAP_API_KEY`
+- `OPENWEATHERMAP_API_KEY` (**obligatoire** pour `/api/weather/at`)
 - `PORT` est défini automatiquement par Railway
 - Optionnel : Twilio, FCM, etc.
 
 Ne pas uploader `.env` tel quel si le repo est public.
+
+Après deploy, vérifier :
+
+```bash
+curl https://VOTRE-SERVICE.up.railway.app/api/health
+```
+
+Si `startup_errors` contient `bamako` ou `weather`, lire le message (souvent clé API ou modèle `.h5` manquant).
 
 ### 3. Forcer le builder Docker
 

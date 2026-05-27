@@ -156,12 +156,19 @@ class BamakoPredictionService:
         commune: Optional[str] = None,
         neighborhood: Optional[str] = None,
         *,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
         use_live_weather: bool = True,
     ) -> Dict:
         """Prédiction Bamako : météo live par défaut, repli sur séquences .npy."""
         if use_live_weather:
             try:
-                return self.predict_live(commune=commune, neighborhood=neighborhood)
+                return self.predict_live(
+                    commune=commune,
+                    neighborhood=neighborhood,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
             except Exception as exc:
                 print(
                     f"[BamakoPredictionService] ⚠️ predict_live échoué ({exc}), "
@@ -173,6 +180,9 @@ class BamakoPredictionService:
         self,
         commune: Optional[str] = None,
         neighborhood: Optional[str] = None,
+        *,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
     ) -> Dict:
         """
         Reconstruit une fenêtre de 30 jours (pas journalier) avec météo récente
@@ -184,8 +194,11 @@ class BamakoPredictionService:
             raise ValueError("Commune ou quartier inconnu. Précisez 'commune' ou 'neighborhood'.")
 
         commune_info = BAMAKO_COMMUNES.get(resolved_commune, {})
-        lat = commune_info.get("lat")
-        lon = commune_info.get("lon")
+        if latitude is not None and longitude is not None:
+            lat, lon = float(latitude), float(longitude)
+        else:
+            lat = commune_info.get("lat")
+            lon = commune_info.get("lon")
         if lat is None or lon is None:
             raise ValueError(f"Coordonnées manquantes pour {resolved_commune}")
 

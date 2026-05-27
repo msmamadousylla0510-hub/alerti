@@ -156,6 +156,35 @@ def get_commune_from_neighborhood(neighborhood_name: str) -> Optional[str]:
     return None
 
 
+def resolve_neighborhood_from_localite(raw_name: str) -> Optional[str]:
+    """
+    Convertit une localité capteur (ex. « Quartier de Sebenikoro, Bamako »)
+    en nom de quartier reconnu par le registre Bamako.
+    """
+    if not raw_name:
+        return None
+    normalized = _normalize_text(raw_name)
+    if normalized in NEIGHBORHOOD_TO_COMMUNE:
+        return normalized
+
+    stripped = normalized
+    for prefix in ("quartier de ", "quartier ", "zone ", "secteur "):
+        if stripped.startswith(prefix):
+            stripped = stripped[len(prefix) :].strip()
+    for suffix in (", bamako", " bamako", " mali"):
+        if stripped.endswith(suffix):
+            stripped = stripped[: -len(suffix)].strip()
+
+    if stripped in NEIGHBORHOOD_TO_COMMUNE:
+        return stripped
+
+    # Correspondance partielle (ex. « sebenikoro yirimadio » → sebenikoro)
+    for key in NEIGHBORHOOD_TO_COMMUNE:
+        if len(key) >= 5 and (key in stripped or stripped in key):
+            return key
+    return None
+
+
 def normalize_commune_name(commune_name: Optional[str]) -> Optional[str]:
     """Normalise les chaînes 'commune 1', 'Commune I', etc. pour coller aux clés officielles."""
     if not commune_name:
@@ -182,6 +211,7 @@ __all__ = [
     "NEIGHBORHOOD_TO_COMMUNE",
     "COMMUNE_ALIASES",
     "get_commune_from_neighborhood",
+    "resolve_neighborhood_from_localite",
     "normalize_commune_name",
     "list_all_neighborhoods",
 ]
